@@ -2,151 +2,250 @@
 Robert Johnson
 CSE-130-50-4262
 2/15/2026
-Story telling text adventure game. 
+Story telling text adventure game.
 
-The player will be able to choose from a list of options to progress through the story.
-It will also allow for text input for certain choices. 
-The story will be about a hero who is on a quest to save the world from an evil villain.   
-The story will have multiple endings depending on the choices the player makes.
-
-The assignment is to utilize strings and memory pointer manipulation 
-to create a dynamic and engaging story.
 */
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
+// Character struct, used to store all of the character's information and choices.
+typedef struct {
+    char *name;
+    char *class;
+    char *color;
+    char *direction;
+    char *approach;
+    char *thirdChoice;
+} character;
 
 // Function prototypes
-void startGame();
-void characterCreation();
-char* intro(char *name, char *class, char *color);
-char* firstChoice(char *direction);
-char* secondChoice();
-char* thirdChoice();
-void ending1();
-void ending2();
-void ending3();
+void startGame(void); // main game function, separate from main so it can be relaunched easily.
+void characterCreation(character *c); // character creation function, takes a pointer to a character struct and fills it with user input
+char* intro(character *c); // Uses the details passed to the character struct to introduce the story
+char* chooseDirection(character *c); // Takes the character struct, and then allows the character to choose a direction.
+char* chooseApproach(character *c); // Takes the character struct, and then allows the character to choose an approach to the ogre based on the direction they chose.
 
 // validation function prototypes
-int validateChoice(char *choice, char *option1, char *option2);
+int validateChoice(const char *choice, const char *option1, const char *option2);
 
-// global arrays
-//sores character info
-char **characterInfo[3][50];
-char **characterChoices[3][50];
+// helpers
+static void trim_newline(char *s);
+static char* dup_string(const char *s);
+static void cleanup(character *c);
 
-
-int main() {
+int main(void) {
     startGame();
     return 0;
 }
 
-void startGame() {
-    printf("Welcome to Simple Text Adventure!\n");
-    characterCreation();
-    intro(characterInfo[0], characterInfo[1], characterInfo[2]);
-    firstChoice(characterChoices[0][0]);
+void startGame(void) {
+    printf("\n\n");
+    printf("===============================================================================\n");
+    printf("Welcome to Simple Text Adventure!\n\n");
+    printf("In this game, you will create a character and make choices that affect the outcome of your adventure.\n");
+    printf("Let's get started!\n");
+    printf("===============================================================================\n\n");
+
+    // Stores: 0=name, 1=class, 2=color
+    character hero;
+
+    characterCreation(&hero);
+
+    intro(&hero);
+    hero.direction = chooseDirection(&hero);
+    printf("\n%s the %s has chosen the %s path.\n", hero.name, hero.class, hero.direction);
+    hero.approach = chooseApproach(&hero);
+    printf("\n%s the %s has chosen the %s path. They decided to %s\n", hero.name, hero.class, hero.direction, hero.approach);
+
 }
 
-void characterCreation() {
-    char name[50];
+void characterCreation(character *myCharacter) {
+    char nameBuf[10];
+    char colorBuf[20];
+
     printf("Please enter your character's name: ");
-    fgets(name, sizeof(name), stdin);
-    printf("Welcome, %s! please select a character class: \n", name);
+    if (!fgets(nameBuf, sizeof(nameBuf), stdin)) {
+        printf("Input error.\n");
+        exit(1);
+    }
+    trim_newline(nameBuf);
+
+    printf("\nWelcome, %s! Please select a character class:\n", nameBuf);
     printf("1. Warrior\n");
     printf("2. Mage\n");
     printf("3. Rogue\n");
     printf("4. Archer\n");
-    int classChoice;
-    scanf("%d", &classChoice);
-    printf("You have chosen the %s class.\n", (classChoice == 1) ? "Warrior" : (classChoice == 2) ? "Mage" : (classChoice == 3) ? "Rogue" : "Archer");
-    printf("Please enter your favorite color: ");
-    char color[20];
-    scanf("%s", color);
-    printf("Your favorite color is %s.\n", color);
-    **characterInfo[0] = name;
-    **characterInfo[1] = (classChoice == 1) ? "Warrior" : (classChoice == 2) ? 
-        "Mage" : (classChoice ==3) ? "Rogue" : "Archer";
-    **characterInfo[2] = color;
+
+    int classChoice = 0;
+    while (1) {
+        printf("Enter 1-4: ");
+        if (scanf("%d", &classChoice) == 1 && classChoice >= 1 && classChoice <= 4) {
+            break;
+        }
+        printf("Invalid input.\n");
+        while (getchar() != '\n') { } // clear input buffer
+    }
+    while (getchar() != '\n') { } // consume leftover newline after scanf
+
+    const char *className =
+        (classChoice == 1) ? "Warrior" :
+        (classChoice == 2) ? "Mage" :
+        (classChoice == 3) ? "Rogue" : "Archer";
+
+    printf("You have chosen the %s class.\n", className);
+
+    printf("\nPlease enter your favorite color: ");
+    if (!fgets(colorBuf, sizeof(colorBuf), stdin)) {
+        printf("Input error.\n");
+        exit(1);
+    }
+    trim_newline(colorBuf);
+
+    printf("Your favorite color is %s.\n\n", colorBuf);
+
+    // Allocate and store safely (pointer + memory manipulation requirement)
+    myCharacter->name = dup_string(nameBuf);
+    myCharacter->class = dup_string(className);
+    myCharacter->color = dup_string(colorBuf);
 }
 
-int validateChoice(char *choice, char *option1, char *option2) {
-    return (choice[0] == option1[0] || choice[0] == option2[0]);
+int validateChoice(const char *choice, const char *option1, const char *option2) {
+    if (!choice || !choice[0]) return 0;
+
+    // compare only first character, case-insensitive (simple)
+    char c = (char)tolower((unsigned char)choice[0]);
+    char o1 = (char)tolower((unsigned char)option1[0]);
+    char o2 = (char)tolower((unsigned char)option2[0]);
+
+    return (c == o1 || c == o2);
 }
 
-char* intro(char *name, char *class, char *color) {
-    char input[50];
-    printf("You are a %s named %s. \n", class, name);
-    switch (class[0]) {
+char* intro(character *c) {
+    printf("\n");
+    printf("===============================================================================\n");
+    printf("You are a %s named %s.\n", c->class, c->name);
+
+    switch (c->class[0]) {
         case 'W':
             printf("You are dressed in metal armor with a sword in one hand and a shield in the other.\n");
-            printf("Your %s cape flutters in the wind.\n", color);
+            printf("Your %s cape flutters in the wind.\n", c->color);
             break;
         case 'M':
             printf("You clutch a staff in your hand, brimming with magic power.\n");
-            printf("Your %s robe billows around you.\n", color);
+            printf("Your %s robe billows around you.\n", c->color);
             break;
         case 'R':
             printf("You hold a gleaming dagger in each hand.\n");
-            printf("Your %s cloak rests over your leather armor.\n", color);
+            printf("Your %s cloak rests over your leather armor.\n", c->color);
             break;
         case 'A':
             printf("You hold a bow in your hands with an arrow knocked and ready.\n");
-            printf("Your trusty %s quiver is strapped to your back.\n", color);
+            printf("Your trusty %s quiver is strapped to your back.\n", c->color);
             break;
-    }  
-    printf("You have accepted a quest from the local adventurers guild.\n");
-    printf("You venture into the nearby forest and defeat an ogre that has been terrorizing the village.\n");
-    printf("You stand at a crossroads in the forest.\n");
-    printf("To the left you see deep footprints that seem to belong to the ogre you seek./n");
-    printf("To the right you see a path that leads to a dark cave.\n");
-    printf("The left path will likely take you directly to the ogre.\n");
-    printf("The right path has lower visibility, but it may provide an opportunity\n");
-    printf("to sneak up behind the ogre and catch it off guard.\n");
-    printf("Which path do you choose? (left or right): ");
-    scanf("%s", input);
-    while (!validateChoice(input, "left", "right")) {
-        printf("Invalid choice. Please enter 'left' or 'right': ");
-        scanf("%s", input);
+        default:
+            break;
     }
-    if (input[0] == 'l') {
-        printf("You take the left path and follow the footprints.\n");
-        printf("This is no time for caution.\n");
-    } else {
-        printf("You take the right path and cautiously make your way through the forest.\n");
-        printf("You hope to catch the ogre off guard.\n");
-    }
-    return input;
 }
 
-char* firstChoice(char *direction) {
-    if (direction[0] == 'l') {
-        printf("You follow the footprints and eventually come across the ogre.\n");
-        printf("The ogre is large and intimidating, but you are determined to defeat it.\n");
-        printf("It seems distracted by a deer it has killed and is feasting on it.\n");
-        printf("Do you choose to rush the ogre head on or try to catch it off guard? (charge or sneak): ");
-        char input[50];
-        scanf("%s", input);
-        while (!validateChoice(input, "charge", "sneak")) {
-            printf("Invalid choice. Please enter 'fight' or 'sneak': ");
-            scanf("%s", input);
+char* chooseDirection(character *c) {
+    char input[50];
+    printf("\nYou have accepted a quest from the local adventurers guild.\n");
+    printf("You venture into the nearby forest to defeat the ogre terrorizing the town.\n\n");
+    printf("You stand at a crossroads in the forest.\n");
+    printf("To the left you see a clear path with deep footprints that seem to belong to the ogre you seek.\n");
+    printf("To the right you see a path that is more obscured by trees and would likely provide cover.\n");
+    printf("Which path do you choose? (left or right): ");
+
+    while (1) {
+        if (!fgets(input, sizeof(input), stdin)) {
+            printf("Input error.\n");
+            exit(1);
         }
-        if (input[0] == 'c') {
-            printf("You charge at the ogre and with your weapon drawn.\n");
-        } else {
-            printf("You approach cautiously.\n");
-        }
+        trim_newline(input);
+
+        if (validateChoice(input, "left", "right")) break;
+        printf("Invalid choice. Please enter 'left' or 'right': ");
+    }
+
+    if (tolower((unsigned char)input[0]) == 'l') {
+        printf("\nYou take the left path and follow the footprints.\n");
+        printf("This is no time for caution.\n");
+        return "left";   
     } else {
-        printf("You cautiously make your way through the forest.\n");
-        printf("You eventually begin to hear a distant growl through the trees.\n");
-        printf("You follow the sound and see the ogre with his back to you.\n");
-        printf("The ogre is large and intimidating, but you are determined to defeat it.\n");
-        printf("It seems distracted, it has killed a deer and is feasting on it.\n");
-        printf("The ogre is not paying attention to you, so you have the element of surprise on your side.\n");
+        printf("\nYou take the right path and cautiously make your way through the forest.\n");
+        printf("You hope to catch the ogre off guard.\n");
+        return "right";  
+    }
+}
+
+char* chooseApproach(character *c) {
+    char input[50];
+
+    if (tolower(c->direction[0]) == 'l') {
+        printf("\nYou follow the footprints and eventually come across the ogre.\n");
+        printf("It seems distracted by a deer it has killed and is feasting on it.\n");
+        printf("Do you rush in head on or try to catch it off guard? (charge or sneak): ");
+
+    } else {
+        printf("\nYou cautiously make your way through the forest.\n");
+        printf("You hear a distant growl through the trees.\n");
+        printf("You find the ogre with his back to you, distracted by his meal.\n");
+        printf("You have the element of surprise.\n");
+        printf("Do you rush in head on or try to catch it off guard? (charge or sneak): ");
+    }
+
+    while (1) {
+        if (!fgets(input, sizeof(input), stdin)) {
+            printf("Input error.\n");
+            exit(1);
+        }
+        trim_newline(input);
+
+        if (validateChoice(input, "charge", "sneak")) {
+            break;
+        }
+        printf("Invalid choice. Please enter 'charge' or 'sneak': ");
+    }
+
+    if (tolower((unsigned char)input[0]) == 'c') {
+        printf("\nYou charge at the ogre with your weapon drawn!\n");
+        return "charge";
+    } else {
+        printf("\nYou approach cautiously, using the trees as cover.\n");
         return "sneak";
     }
+    
 }
 
+// helpers
 
+static void trim_newline(char *s) {
+    if (!s) return;
+    size_t len = strlen(s);
+    if (len > 0 && s[len - 1] == '\n') s[len - 1] = '\0';
+}
 
+static char* dup_string(const char *s) {
+    if (!s) return NULL;
+    size_t n = strlen(s) + 1;
+    char *p = (char*)malloc(n);
+    if (!p) {
+        printf("Out of memory.\n");
+        exit(1);
+    }
+    memcpy(p, s, n);
+    return p;
+}
 
+static void cleanup(character *c) {
+    free(c->name);
+    free(c->class);
+    free(c->color);
+    free(c->direction);
+    free(c->approach);
+    free(c->thirdChoice);
+    c->name = c->class = c->color = c->direction = c-> approach = c->thirdChoice = NULL;
+}
