@@ -18,23 +18,30 @@ typedef struct {
     char *color;
     char *direction;
     char *approach;
-    char *thirdChoice;
+    char *outcome;
 } character;
 
 // Function prototypes
 void startGame(void); // main game function, separate from main so it can be relaunched easily.
 void characterCreation(character *c); // character creation function, takes a pointer to a character struct and fills it with user input
-char* intro(character *c); // Uses the details passed to the character struct to introduce the story
+void intro(character *c); // Uses the details passed to the character struct to introduce the story
 char* chooseDirection(character *c); // Takes the character struct, and then allows the character to choose a direction.
 char* chooseApproach(character *c); // Takes the character struct, and then allows the character to choose an approach to the ogre based on the direction they chose.
 
-// validation function prototypes
+
+// final battle function prototpes
+// Class selection and previous choices will affect options available
+char* battleOgreMage(character *c); // takes the character struct and determines battle outcome.
+char* battleOgreWarrior(character *c); // takes the character struct and determines battle outcome.
+char* battleOgreRogue(character *c); // takes the character struct and determines battle outcome.
+char* battleOgreArcher(character *c); // takes the character struct and determines battle outcome.
+// validation function prototype
 int validateChoice(const char *choice, const char *option1, const char *option2);
 
 // helpers
-static void trim_newline(char *s);
-static char* dup_string(const char *s);
-static void cleanup(character *c);
+static void trim_newline(char *s); // removes trailing newline from fgets input
+static char* dup_string(const char *s); // duplicates a string using dynamic memory allocation, returns pointer to new string
+static void cleanup(character *c); // frees all dynamically allocated memory in the character struct and sets pointers to NULL
 
 int main(void) {
     startGame();
@@ -49,16 +56,37 @@ void startGame(void) {
     printf("Let's get started!\n");
     printf("===============================================================================\n\n");
 
-    // Stores: 0=name, 1=class, 2=color
+    // stores all of the character's information and choices, passed to all functions that need it.
     character hero;
 
-    characterCreation(&hero);
+    characterCreation(&hero); // creates the character and fills the struct with the character's information
 
-    intro(&hero);
-    hero.direction = chooseDirection(&hero);
-    printf("\n%s the %s has chosen the %s path.\n", hero.name, hero.class, hero.direction);
+    intro(&hero); // introduces the story using the character's information
+    hero.direction = chooseDirection(&hero);  // allows the character to choose a direction and stores the choice in the struct
     hero.approach = chooseApproach(&hero);
-    printf("\n%s the %s has chosen the %s path. They decided to %s\n", hero.name, hero.class, hero.direction, hero.approach);
+
+    // determines the outcome of the battle based on the character's class and choices
+    switch (hero.class[0]) {
+        case 'W':
+            hero.outcome = battleOgreWarrior(&hero);
+            break;
+        case 'M':
+            hero.outcome = battleOgreMage(&hero);
+            break;
+        case 'R':
+            hero.outcome = battleOgreRogue(&hero);
+            break;
+        case 'A':
+            hero.outcome = battleOgreArcher(&hero);
+            break;
+    }
+
+
+    // test print for the information in the struct.
+    printf("\n%s the %s has chosen the %s path. They decided to %s\n", 
+        hero.name, hero.class, hero.direction, hero.approach);
+
+    printf("\n The outcome was %s!\n\n", hero.outcome);
 
 }
 
@@ -123,7 +151,7 @@ int validateChoice(const char *choice, const char *option1, const char *option2)
     return (c == o1 || c == o2);
 }
 
-char* intro(character *c) {
+void intro(character *c) {
     printf("\n");
     printf("===============================================================================\n");
     printf("You are a %s named %s.\n", c->class, c->name);
@@ -152,7 +180,7 @@ char* intro(character *c) {
 
 char* chooseDirection(character *c) {
     char input[50];
-    printf("\nYou have accepted a quest from the local adventurers guild.\n");
+    printf("\nYou have accepted a quest from the local %s's guild.\n", c->class);
     printf("You venture into the nearby forest to defeat the ogre terrorizing the town.\n\n");
     printf("You stand at a crossroads in the forest.\n");
     printf("To the left you see a clear path with deep footprints that seem to belong to the ogre you seek.\n");
@@ -220,6 +248,207 @@ char* chooseApproach(character *c) {
     
 }
 
+char* battleOgreWarrior(character *c) {
+    // battle logic for warrior class
+    if (c->direction[0] == 'l') {
+        // Left path, direct approach
+        if (c->approach[0] == 'c') {
+            printf("\nYou charge at the ogre, with your sword and shield raised.\n");
+            printf("The ogre turns to face you.\n");
+            printf("The ogre swings down on you with his club.\n");
+            printf("You raise your shield just in time to block the attack, but the force of the blow knocks you back.\n");
+            printf("You quickly recover and strike the ogre with your sword, dealing a powerful blow.\n");
+            printf("After a fierce battle, you emerge victorious!\n");
+            return "victory";
+        // left path, sneak approach
+        } else {
+            printf("\nYou attempt to sneak up on the ogre and strike it from behind.\n");
+            printf("However, you are wearing heavy armor and the clanging as you move alerts the ogre.\n");
+            printf("The ogre turns around and sees you.\n");
+            printf("The ogre is strong, and your attempt to sneak has left you vulnerable.\n");
+            printf("The ogre leaps into action slamming down on you with its club.\n");
+            printf("You attempt to block but are knocked prone on the ground.\n");
+            printf("The last thing you see is the club swinging down on you.\n");
+            printf("You are defeated.\n");
+            return "defeat";
+        }
+    } else {
+        // right path, direct approach
+        if (c->approach[0] == 'c') {
+            printf("\nYou charge at the ogre from the treeline, sword and shield in hand.\n");
+            printf("The ogre is caught a bit off guard by your sudden attack, but readies himself.\n");
+            printf("You get a clean hit on the ogre, but it is still standing.\n");
+            printf("The ogre retaliates with a powerful strike, but your shield absorbs the blow.\n");
+            printf("You retaliate with a clean strike to belly and defeat the ogre!\n");
+            return "victory";
+        // right path, sneak approach
+        } else {
+            printf("\nYou attempt to sneak up on the ogre and strike it from behind.\n");
+            printf("However, you are wearing heavy armor and the clanging and rustling in the trees alerts the ogre.\n");
+            printf("The ogre leaps into action slamming down on you with its club.\n");
+            printf("You attempt to block but are knocked back against a tree.\n");
+            printf("The wind is knocked out of you and you collapse on the ground in a daze.\n");
+            printf("The last thing you see is the ogre leaping on to you with his club swinging down.\n");
+            printf("You are defeated.\n");
+            return "defeat";
+        }
+    }
+        
+}
+
+char* battleOgreMage(character *c) {
+    // battle logic for warrior class
+    if (c->direction[0] == 'l') {
+        // Left path, direct approach
+        if (c->approach[0] == 'c') {
+            printf("\nYou charge at the ogre, with your staff raised.\n");
+            printf("The ogre turns to face you.\n");
+            printf("You attempt to cast a fireball, but your incantation is cut short.\n");
+            printf("The ogre hurls a rock, that hits you and interupts your casting");
+            printf("The ogre leaps into the air towards you");
+            printf("You quickly cast a shield spell.");
+            printf("The club crashes down on your shield, absorbing some of the blow.");
+            printf("The shield shatters as the ogre lands over you");
+            printf("The last thing you see is the ogres club swinging towards you\n");
+            return "defeat";
+        // left path, sneak approach
+        } else {
+            printf("\nYou attempt to sneak up on the ogre and strike it from behind.\n");
+            printf("You chant quitely under your breath.\n");
+            printf("The ogre turns around just as you unleash an enormous fireball.\n");
+            printf("The ogre is singed and burning but attempts to lunge at you.\n");
+            printf("Fully prepared you launch a volley of magic missles as a follow up.\n");
+            printf("The ogre falls to the ground, blasted to death.\n");
+            return "victory";
+        }
+    } else {
+        // right path, direct approach
+        if (c->approach[0] == 'c') {
+            printf("\nYou charge at the ogre from the treeline.\n");
+            printf("The ogre is caught a bit off guard by your sudden approach, but readies himself.\n");
+            printf("As you raise your staff and begin your incantation the ogre leaps.\n");
+            printf("You launch the fireball at the incoming ogre, singing him, but he is still alive\n");
+            printf("The ogre crashes down on you with his now burning club\n");
+            printf("You feel the heat as the club approaches you, and then you feel nothing\n");
+            return "defeat";
+        // right path, sneak approach
+        } else {
+            printf("\nFrom the treeline you have plenty of time to prepare\n");
+            printf("The ogre is unaware of your presence.\n");
+            printf("As silently as you can manage you say your incantations.\n");
+            printf("The ogre is startled as dark clouds form overhead.\n");
+            printf("He looks up just in time to see a lightning bolt crash down upon him.\n");
+            printf("The ogre collapses to the ground, singed and sparking.\n");
+            return "victory";
+        }
+    }
+        
+}
+
+char* battleOgreRogue(character *c) {
+    // battle logic for warrior class
+    if (c->direction[0] == 'l') {
+        // Left path, direct approach
+        if (c->approach[0] == 'c') {
+            printf("\nYou charge at the ogre, with your daggers raised.\n");
+            printf("The ogre turns to face you.\n");
+            printf("As you rush forwards the ogre swings its huge club down on you.\n");
+            printf("You are able to use your agility to barley roll out of the way.\n");
+            printf("As you are attempting to stand you feel the club strike you in the side\n");
+            printf("You are sent flying into the trees and strike hard against a large oak.\n");
+            printf("Everything goes dark as you you struggle to breathe\n");
+            return "defeat";
+        // left path, sneak approach
+        } else {
+            printf("\nYou approach the Ogre quietly, daggers drawn.\n");
+            printf("You watch the ground and are careful not to make a sound.\n");
+            printf("Crouched behind the ogre you thrust your dagger between its ribs.\n");
+            printf("Startled the ogre turns quickly, swinging its club.\n");
+            printf("You nimbly duck out of the way, then thrust your dagger into the ogres heart.\n");
+            printf("The ogre falls to the ground, dead.\n");
+            return "victory";
+        }
+    } else {
+        // right path, direct approach
+        if (c->approach[0] == 'c') {
+            printf("\nYou charge at the ogre from the treeline, daggers raised.\n");
+            printf("The ogre is caught a bit off guard by your sudden approach, but readies himself.\n");
+            printf("As you rush forward the ogre leaps, club raised.\n");
+            printf("You manage to just barley roll out of the way as the ogre crashes to the ground\n");
+            printf("You stumble to your feet, the ogre has his back to you.\n");
+            printf("You rush forward with your daggers outstretched, prepared to strike\n");
+            printf("The ogre quickly turns and its club strikes against your skull\n");
+            printf("Everything goes dark\n");
+            return "defeat";
+        // right path, sneak approach
+        } else {
+            printf("\nFrom the treeline you have plenty of time to prepare and observe\n");
+            printf("The ogre is unaware of your presence, feasting on a deer it has killed.\n");
+            printf("Silently you approach, careful not to step on any sticks or twigs.\n");
+            printf("The ogre is enjoying its meal as your dagger slides expertly between its ribs.\n");
+            printf("You jump back as the ogre turns.\n");
+            printf("The ogre struggles to raise its club, then collapses to the ground.\n");
+            return "victory";
+        }
+    }      
+}
+
+char* battleOgreArcher(character *c) {
+    // battle logic for warrior class
+    if (c->direction[0] == 'l') {
+        // Left path, direct approach
+        if (c->approach[0] == 'c') {
+            printf("\nYou rush towards the ogre with your bow drawn.\n");
+            printf("The ogre turns to face you.\n");
+            printf("You let loose your first arrow, and the ogre blocks with its arm.\n");
+            printf("The arrow sinks into its left forearm as the ogre screams in pain.\n");
+            printf("You notch a second arrow and begin to pull back to fire\n");
+            printf("Before you can fire the carcass of the deer comes flying at you.\n");
+            printf("You roll out of the way\n.");
+            printf("Before you can stand the ogre leaps upon you.\n");
+            printf("The club crashed down upon you\n");
+            printf("Everything goes dark.\n");
+            return "defeat";
+        // left path, sneak approach
+        } else {
+            printf("\nYou approach the Ogre quietly, bow drawn.\n");
+            printf("You watch the ground and are careful not to make a sound.\n");
+            printf("You are able to line up the perfect shot.\n");
+            printf("Your arrow pierces the ogre in the skull\n");
+            printf("Startled the ogre turns quickly, swinging its club, wildly.\n");
+            printf("You are far from the club's range and the ogre seems confused.\n");
+            printf("As the Ogre flails wildly you line up your shot and release\n");
+            printf("The arrow strikes between the ogre's eyes\n");
+            printf("The ogre falls to the ground, dead.\n");
+            return "victory";
+        }
+    } else {
+        // right path, direct approach
+        if (c->approach[0] == 'c') {
+            printf("\nYou charge at the ogre from the treeline, bow raised, arrow knocked.\n");
+            printf("The ogre is caught a bit off guard by your sudden approach, but readies himself.\n");
+            printf("As you rush forward the ogre leaps, club raised.\n");
+            printf("You manage to just barley roll out of the way as the ogre crashes to the ground\n");
+            printf("You stumble to your feet, the ogre has his back to you.\n");
+            printf("You pull your bow and, prepared to strike\n");
+            printf("The ogre quickly turns and its club strikes against your skull\n");
+            printf("Everything goes dark\n");
+            return "defeat";
+        // right path, sneak approach
+        } else {
+            printf("\nFrom the treeline you have plenty of time to prepare and observe\n");
+            printf("The ogre is unaware of your presence, feasting on a deer it has killed.\n");
+            printf("Silently you make your way to a better vantage point in the trees.\n");
+            printf("The ogre is enjoying its meal as your first arrow strikes it in the neck.\n");
+            printf("Startled and confused the ogre flails.\n");
+            printf("The ogre hurls the deer in your general direction, but it does not reach your perch.\n");
+            printf("Your second arrow strikes the ogre in the eye.\n");
+            printf("After a bit more hopeless flailing the ogre collapses to the ground.\n");
+            return "victory";
+        }
+    }      
+}
+
 // helpers
 
 static void trim_newline(char *s) {
@@ -246,6 +475,6 @@ static void cleanup(character *c) {
     free(c->color);
     free(c->direction);
     free(c->approach);
-    free(c->thirdChoice);
-    c->name = c->class = c->color = c->direction = c-> approach = c->thirdChoice = NULL;
+    free(c->outcome);
+    c->name = c->class = c->color = c->direction = c-> approach = c->outcome = NULL;
 }
