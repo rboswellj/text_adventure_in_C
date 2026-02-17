@@ -4,6 +4,11 @@ CSE-130-50-4262
 2/15/2026
 Story telling text adventure game.
 
+TODO: Add more variation to combat phase.
+      Adjust options for approach based on class
+      Add delay to text output from battle, or require keypress to progress (Easier to read)
+      Add more choices so the outcome is decided by more than 2 binary choices.
+
 */
 
 #include <stdio.h>
@@ -14,34 +19,36 @@ Story telling text adventure game.
 // Character struct, used to store all of the character's information and choices.
 typedef struct {
     char *name;
-    char *class;
+    char *characterClass;
     char *color;
     char *direction;
     char *approach;
     char *outcome;
-} character;
+} Character;
 
 // Function prototypes
 void startGame(void); // main game function, separate from main so it can be relaunched easily.
-void characterCreation(character *c); // character creation function, takes a pointer to a character struct and fills it with user input
-void intro(character *c); // Uses the details passed to the character struct to introduce the story
-char* chooseDirection(character *c); // Takes the character struct, and then allows the character to choose a direction.
-char* chooseApproach(character *c); // Takes the character struct, and then allows the character to choose an approach to the ogre based on the direction they chose.
+void characterCreation(Character *c); // character creation function, takes a pointer to a character struct and fills it with user input
+void intro(Character *c); // Uses the details passed to the character struct to introduce the story
+char* chooseDirection(Character *c); // Takes the character struct, and then allows the character to choose a direction.
+char* chooseApproach(Character *c); // Takes the character struct, and then allows the character to choose an approach to the ogre based on the direction they chose.
 
 
 // final battle function prototpes
-// Class selection and previous choices will affect options available
-char* battleOgreMage(character *c); // takes the character struct and determines battle outcome.
-char* battleOgreWarrior(character *c); // takes the character struct and determines battle outcome.
-char* battleOgreRogue(character *c); // takes the character struct and determines battle outcome.
-char* battleOgreArcher(character *c); // takes the character struct and determines battle outcome.
+// characterClass selection and previous choices will affect options available
+char* battleOgreMage(Character *c); // takes the character struct and determines battle outcome.
+char* battleOgreWarrior(Character *c); // takes the character struct and determines battle outcome.
+char* battleOgreRogue(Character *c); // takes the character struct and determines battle outcome.
+char* battleOgreArcher(Character *c); // takes the character struct and determines battle outcome.
+
 // validation function prototype
+void toLowerStr(char *str); // convert input to lowercase (used for decisions, not name/color);
 int validateChoice(const char *choice, const char *option1, const char *option2);
 
 // helpers
 static void trim_newline(char *s); // removes trailing newline from fgets input
 static char* dup_string(const char *s); // duplicates a string using dynamic memory allocation, returns pointer to new string
-static void cleanup(character *c); // frees all dynamically allocated memory in the character struct and sets pointers to NULL
+static void cleanup(Character *c); // frees all dynamically allocated memory in the character struct and sets pointers to NULL
 
 int main(void) {
     startGame();
@@ -57,7 +64,7 @@ void startGame(void) {
     printf("===============================================================================\n\n");
 
     // stores all of the character's information and choices, passed to all functions that need it.
-    character hero;
+    Character hero;
 
     characterCreation(&hero); // creates the character and fills the struct with the character's information
 
@@ -65,8 +72,8 @@ void startGame(void) {
     hero.direction = chooseDirection(&hero);  // allows the character to choose a direction and stores the choice in the struct
     hero.approach = chooseApproach(&hero);
 
-    // determines the outcome of the battle based on the character's class and choices
-    switch (hero.class[0]) {
+    // determines the outcome of the battle based on the character's characterClass and choices
+    switch (hero.characterClass[0]) {
         case 'W':
             hero.outcome = battleOgreWarrior(&hero);
             break;
@@ -84,14 +91,15 @@ void startGame(void) {
 
     // test print for the information in the struct.
     printf("\n%s the %s has chosen the %s path. They decided to %s\n", 
-        hero.name, hero.class, hero.direction, hero.approach);
+        hero.name, hero.characterClass, hero.direction, hero.approach);
 
     printf("\n The outcome was %s!\n\n", hero.outcome);
+    cleanup(&hero);
 
 }
 
-void characterCreation(character *myCharacter) {
-    char nameBuf[10];
+void characterCreation(Character *myCharacter) {
+    char nameBuf[50];
     char colorBuf[20];
 
     printf("Please enter your character's name: ");
@@ -136,27 +144,16 @@ void characterCreation(character *myCharacter) {
 
     // Allocate and store safely (pointer + memory manipulation requirement)
     myCharacter->name = dup_string(nameBuf);
-    myCharacter->class = dup_string(className);
+    myCharacter->characterClass = dup_string(className);
     myCharacter->color = dup_string(colorBuf);
 }
 
-int validateChoice(const char *choice, const char *option1, const char *option2) {
-    if (!choice || !choice[0]) return 0;
-
-    // compare only first character, case-insensitive (simple)
-    char c = (char)tolower((unsigned char)choice[0]);
-    char o1 = (char)tolower((unsigned char)option1[0]);
-    char o2 = (char)tolower((unsigned char)option2[0]);
-
-    return (c == o1 || c == o2);
-}
-
-void intro(character *c) {
+void intro(Character *c) {
     printf("\n");
     printf("===============================================================================\n");
-    printf("You are a %s named %s.\n", c->class, c->name);
+    printf("You are a %s named %s.\n", c->characterClass, c->name);
 
-    switch (c->class[0]) {
+    switch (c->characterClass[0]) {
         case 'W':
             printf("You are dressed in metal armor with a sword in one hand and a shield in the other.\n");
             printf("Your %s cape flutters in the wind.\n", c->color);
@@ -178,9 +175,9 @@ void intro(character *c) {
     }
 }
 
-char* chooseDirection(character *c) {
+char* chooseDirection(Character *c) {
     char input[50];
-    printf("\nYou have accepted a quest from the local %s's guild.\n", c->class);
+    printf("\nYou have accepted a quest from the local %s's guild.\n", c->characterClass);
     printf("You venture into the nearby forest to defeat the ogre terrorizing the town.\n\n");
     printf("You stand at a crossroads in the forest.\n");
     printf("To the left you see a clear path with deep footprints that seem to belong to the ogre you seek.\n");
@@ -193,7 +190,7 @@ char* chooseDirection(character *c) {
             exit(1);
         }
         trim_newline(input);
-
+        toLowerStr(input);
         if (validateChoice(input, "left", "right")) break;
         printf("Invalid choice. Please enter 'left' or 'right': ");
     }
@@ -209,13 +206,14 @@ char* chooseDirection(character *c) {
     }
 }
 
-char* chooseApproach(character *c) {
+char* chooseApproach(Character *c) {
     char input[50];
 
     if (tolower(c->direction[0]) == 'l') {
         printf("\nYou follow the footprints and eventually come across the ogre.\n");
         printf("It seems distracted by a deer it has killed and is feasting on it.\n");
-        printf("Do you rush in head on or try to catch it off guard? (charge or sneak): ");
+        printf("Do you rush in head on or try to catch it off guard,\n");
+        printf("or do you exercice caution and attempt to sneak up on it? (charge or sneak): ");
 
     } else {
         printf("\nYou cautiously make your way through the forest.\n");
@@ -231,7 +229,7 @@ char* chooseApproach(character *c) {
             exit(1);
         }
         trim_newline(input);
-
+        toLowerStr(input);
         if (validateChoice(input, "charge", "sneak")) {
             break;
         }
@@ -242,23 +240,23 @@ char* chooseApproach(character *c) {
         printf("\nYou charge at the ogre with your weapon drawn!\n");
         return "charge";
     } else {
-        printf("\nYou approach cautiously, using the trees as cover.\n");
+        printf("\nYou approach cautiously.\n");
         return "sneak";
     }
     
 }
 
-char* battleOgreWarrior(character *c) {
-    // battle logic for warrior class
+char* battleOgreWarrior(Character *c) {
+    // battle logic for warrior characterClass
     if (c->direction[0] == 'l') {
         // Left path, direct approach
         if (c->approach[0] == 'c') {
             printf("\nYou charge at the ogre, with your sword and shield raised.\n");
             printf("The ogre turns to face you.\n");
             printf("The ogre swings down on you with his club.\n");
-            printf("You raise your shield just in time to block the attack, but the force of the blow knocks you back.\n");
-            printf("You quickly recover and strike the ogre with your sword, dealing a powerful blow.\n");
-            printf("After a fierce battle, you emerge victorious!\n");
+            printf("You raise your shield just in time to block the attack.\n");
+            printf("You quickly recover and strike the ogre's belly with your sword..\n");
+            printf("As you withdraw your sword the ogre collapses to the ground.\n");
             return "victory";
         // left path, sneak approach
         } else {
@@ -269,7 +267,6 @@ char* battleOgreWarrior(character *c) {
             printf("The ogre leaps into action slamming down on you with its club.\n");
             printf("You attempt to block but are knocked prone on the ground.\n");
             printf("The last thing you see is the club swinging down on you.\n");
-            printf("You are defeated.\n");
             return "defeat";
         }
     } else {
@@ -279,7 +276,8 @@ char* battleOgreWarrior(character *c) {
             printf("The ogre is caught a bit off guard by your sudden attack, but readies himself.\n");
             printf("You get a clean hit on the ogre, but it is still standing.\n");
             printf("The ogre retaliates with a powerful strike, but your shield absorbs the blow.\n");
-            printf("You retaliate with a clean strike to belly and defeat the ogre!\n");
+            printf("You retaliate with a clean strike to belly!\n");
+            printf("The ogre collapses at your feet.\n");
             return "victory";
         // right path, sneak approach
         } else {
@@ -288,16 +286,15 @@ char* battleOgreWarrior(character *c) {
             printf("The ogre leaps into action slamming down on you with its club.\n");
             printf("You attempt to block but are knocked back against a tree.\n");
             printf("The wind is knocked out of you and you collapse on the ground in a daze.\n");
-            printf("The last thing you see is the ogre leaping on to you with his club swinging down.\n");
-            printf("You are defeated.\n");
+            printf("The last thing you see is the ogre leaping towards you with his club swinging down.\n");
             return "defeat";
         }
     }
         
 }
 
-char* battleOgreMage(character *c) {
-    // battle logic for warrior class
+char* battleOgreMage(Character *c) {
+    // battle logic for warrior characterClass
     if (c->direction[0] == 'l') {
         // Left path, direct approach
         if (c->approach[0] == 'c') {
@@ -345,8 +342,8 @@ char* battleOgreMage(character *c) {
         
 }
 
-char* battleOgreRogue(character *c) {
-    // battle logic for warrior class
+char* battleOgreRogue(Character *c) {
+    // battle logic for warrior characterClass
     if (c->direction[0] == 'l') {
         // Left path, direct approach
         if (c->approach[0] == 'c') {
@@ -393,8 +390,8 @@ char* battleOgreRogue(character *c) {
     }      
 }
 
-char* battleOgreArcher(character *c) {
-    // battle logic for warrior class
+char* battleOgreArcher(Character *c) {
+    // battle logic for warrior characterClass
     if (c->direction[0] == 'l') {
         // Left path, direct approach
         if (c->approach[0] == 'c') {
@@ -451,12 +448,21 @@ char* battleOgreArcher(character *c) {
 
 // helpers
 
+// converts inputs to lowercase to simplify validation and logic
+void toLowerStr(char *str) {
+    for (int i = 0; str[i] != '\0'; i++) {
+        str[i] = tolower((unsigned char)str[i]);
+    }
+}
+
+// trim new lines from inputs to avoid errors
 static void trim_newline(char *s) {
     if (!s) return;
     size_t len = strlen(s);
     if (len > 0 && s[len - 1] == '\n') s[len - 1] = '\0';
 }
 
+// duplicate input strings for assignment to struct
 static char* dup_string(const char *s) {
     if (!s) return NULL;
     size_t n = strlen(s) + 1;
@@ -469,12 +475,19 @@ static char* dup_string(const char *s) {
     return p;
 }
 
-static void cleanup(character *c) {
+// Clean all pointers and struct data.
+static void cleanup(Character *c) {
     free(c->name);
-    free(c->class);
+    free(c->characterClass);
     free(c->color);
     free(c->direction);
     free(c->approach);
     free(c->outcome);
-    c->name = c->class = c->color = c->direction = c-> approach = c->outcome = NULL;
+    c->name = c->characterClass = c->color = c->direction = c-> approach = c->outcome = NULL;
+}
+
+int validateChoice(const char *choice, const char *option1, const char *option2)
+{
+    return (strcmp(choice, option1) == 0 ||
+            strcmp(choice, option2) == 0);
 }
